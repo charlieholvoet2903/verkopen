@@ -100,7 +100,7 @@ h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transf
 
 <script>
 "use strict";
-const CFG=Object.assign({clientId:"",tenant:"common",currentFile:"",historyFile:"",cutover:"2026-09",refreshHours:24},window.APP_CONFIG||{});
+const CFG=Object.assign({clientId:"",loginHint:"",tenant:"common",currentFile:"",historyFile:"",cutover:"2026-09",refreshHours:24},window.APP_CONFIG||{});
 const CUT=CFG.cutover, CUTY=+CUT.slice(0,4);
 
 /* =================== Streaming XLSX reader (no libraries) =================== */
@@ -450,7 +450,8 @@ const OD=(()=>{
     const ch=b64u(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier)));
     sessionStorage.setItem("od_pkce",JSON.stringify({verifier,state,silent:!!silent}));
     const p=new URLSearchParams({client_id:CFG.clientId,response_type:"code",redirect_uri:redirect,scope:SCOPE,code_challenge:ch,code_challenge_method:"S256",state,response_mode:"query"});
-    if(silent)p.set("prompt","none");
+    if(silent)p.set("prompt","none");else p.set("prompt","select_account");
+    if(CFG.loginHint)p.set("login_hint",CFG.loginHint);
     location.assign(`${AUTH}/authorize?${p}`);
   }
   async function token(body){
