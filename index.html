@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Verkopen">
+<meta name="theme-color" content="#1f3a2e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Verkopen per artikel</title>
+<style>
+:root{--bg:#f3f4f1;--card:#fff;--ink:#1c2321;--muted:#6b736f;--line:#e3e6e1;--brand:#1f3a2e;--accent:#3d7a4f;--accent2:#9cc3a6;--warn:#b5462f;--soft:#e8efe9}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+header{background:var(--brand);color:#fff;padding:calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 16px) 14px calc(env(safe-area-inset-left) + 16px);position:sticky;top:0;z-index:5}
+.wrap{max-width:1100px;margin:0 auto}
+.top{display:flex;align-items:center;gap:8px}
+.top h1{font-size:19px;margin:0;flex:1}
+.status{font-size:12px;opacity:.9;margin:4px 0 10px;line-height:1.5}
+.status .old{background:#f3c969;color:#3a2a00;border-radius:5px;padding:1px 6px;font-weight:700}
+.btn{border:0;border-radius:10px;padding:10px 14px;font:600 15px/1 inherit;font-family:inherit;cursor:pointer;background:rgba(255,255,255,.14);color:#fff}
+.btn:active{transform:scale(.97)}
+.ibtn{padding:9px;display:flex}
+.scan{display:flex;gap:8px}
+.scan input{flex:1;min-width:0;border:0;border-radius:12px;padding:14px;font-size:18px;font-family:inherit;background:#fff;color:var(--ink);outline:none}
+.scan input:focus{box-shadow:0 0 0 3px var(--accent2)}
+.scan .btn{background:var(--accent);padding:0 16px}
+.icon{width:24px;height:24px;display:block}
+main{max-width:1100px;margin:0 auto;padding:16px calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 32px) calc(env(safe-area-inset-left) + 16px)}
+.card{background:var(--card);border-radius:16px;padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.05);margin-bottom:14px}
+.empty{text-align:center;color:var(--muted);padding:44px 20px}
+.empty b{color:var(--ink);display:block;font-size:18px;margin-bottom:6px}
+.title{font-size:22px;font-weight:700;margin:0 0 10px;line-height:1.2}
+.ids{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--soft);border-radius:8px;padding:5px 9px;font-size:13px}
+.chip span{color:var(--muted);margin-right:4px}
+.badge{display:inline-block;background:#fbe7e2;color:var(--warn);border-radius:6px;font-size:12px;font-weight:700;padding:3px 7px;margin-left:6px;vertical-align:middle}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.tile{background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.05);min-width:0}
+.tile .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.tile .v{font-size:24px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile .v.t{font-size:17px}
+.tile .s{font-size:12px;color:var(--muted)}
+.tile.hl{background:var(--brand);color:#fff}.tile.hl .l,.tile.hl .s{color:rgba(255,255,255,.75)}
+.tile.low .v{color:var(--warn)}
+h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.grid{display:grid;gap:14px}
+.list button{display:block;width:100%;text-align:left;border:0;background:none;padding:12px 4px;border-bottom:1px solid var(--line);font:inherit;color:inherit;cursor:pointer}
+.list button small{color:var(--muted);display:block}
+.msg{padding:12px 14px;border-radius:12px;background:#fff4dd;margin-bottom:14px;font-size:14px}
+.msg button{margin-top:8px;background:var(--brand)}
+.foot{text-align:center;font-size:12px;color:var(--muted);margin-top:4px}
+#cam{position:fixed;inset:0;background:#000;z-index:20;display:none;flex-direction:column}
+#cam video{flex:1;width:100%;object-fit:cover}
+#cam .bar{position:absolute;left:10%;right:10%;top:45%;height:2px;background:#ff4b3a;box-shadow:0 0 12px #ff4b3a}
+#cam .close{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:16px;background:rgba(0,0,0,.55)}
+#cam .hint{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 30px);left:0;right:0;text-align:center;color:#fff}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:15;display:none;align-items:flex-end;justify-content:center}
+#sheet .panel{background:var(--bg);width:100%;max-width:640px;max-height:90vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px)}
+#sheet h3{margin:0 0 12px;font-size:20px;display:flex;align-items:center}
+#sheet h3 span{flex:1}
+.sec{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;font-size:14px}
+.sec b{display:block;font-size:15px;margin-bottom:4px}
+.sec .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sec .btn{background:var(--soft);color:var(--ink);font-size:14px}
+.sec .btn.p{background:var(--accent);color:#fff}
+.muted{color:var(--muted)}
+@media (min-width:760px){.tiles{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr 1fr}.title{font-size:26px}#sheet{align-items:center}#sheet .panel{border-radius:18px}}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<header>
+ <div class="wrap">
+  <div class="top">
+    <h1>Verkopen per artikel</h1>
+    <button class="btn ibtn" id="refreshBtn" aria-label="Nu vernieuwen" title="Nu vernieuwen"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg></button>
+    <button class="btn ibtn" id="setBtn" aria-label="Instellingen" title="Gegevens en instellingen"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="#1f3a2e"/><circle cx="15" cy="12" r="2" fill="#1f3a2e"/><circle cx="8" cy="18" r="2" fill="#1f3a2e"/></svg></button>
+  </div>
+  <div class="status" id="status">Nog geen data geladen</div>
+  <form class="scan" id="form" autocomplete="off">
+    <input id="q" placeholder="Scan of typ barcode, code of omschrijving" enterkeyhint="search" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button class="btn" type="button" id="camBtn" aria-label="Scannen met camera"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10 8v8M13 8v8M17 8v8"/></svg></button>
+  </form>
+ </div>
+</header>
+
+<main id="out"></main>
+
+<div id="cam"><video id="video" playsinline muted></video><div class="bar"></div><button class="btn close" id="camClose">Sluiten</button><div class="hint">Richt de camera op de barcode</div></div>
+
+<div id="sheet"><div class="panel" id="panel"></div></div>
+<input type="file" id="fileCur" accept=".xlsx,.xlsm" hidden>
+<input type="file" id="fileHist" accept=".xlsx,.xlsm" hidden>
+
+<script>
+"use strict";
+const CFG=Object.assign({clientId:"",tenant:"common",currentFile:"",historyFile:"",cutover:"2026-09",refreshHours:24},window.APP_CONFIG||{});
+const CUT=CFG.cutover, CUTY=+CUT.slice(0,4);
+
+/* =================== Streaming XLSX reader (no libraries) =================== */
+const XE={"&amp;":"&","&lt;":"<","&gt;":">","&quot;":'"',"&apos;":"'"};
+const unx=s=>s.indexOf("&")<0?s:s.replace(/&(amp|lt|gt|quot|apos);|&#(x?)([0-9a-f]+);/gi,(m,n,x,c)=>n?XE[m]:String.fromCodePoint(parseInt(c,x?16:10)));
+function zipIndex(buf){
+  const dv=new DataView(buf),td=new TextDecoder();let eocd=-1;
+  for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-70000);i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;}}
+  if(eocd<0)throw new Error("Dit lijkt geen geldig .xlsx-bestand.");
+  const n=dv.getUint16(eocd+10,true);let p=dv.getUint32(eocd+16,true);const files={};
+  for(let k=0;k<n;k++){const method=dv.getUint16(p+10,true),csize=dv.getUint32(p+20,true),nlen=dv.getUint16(p+28,true),elen=dv.getUint16(p+30,true),clen=dv.getUint16(p+32,true),off=dv.getUint32(p+42,true);
+    files[td.decode(new Uint8Array(buf,p+46,nlen))]={method,csize,off};p+=46+nlen+elen+clen;}
+  return {buf,dv,files};
+}
+function entryStream(z,name){const e=z.files[name];if(!e)return null;const ln=z.dv.getUint16(e.off+26,true),le=z.dv.getUint16(e.off+28,true);
+  let s=new Blob([new Uint8Array(z.buf,e.off+30+ln+le,e.csize)]).stream();if(e.method!==0)s=s.pipeThrough(new DecompressionStream("deflate-raw"));return s.pipeThrough(new TextDecoderStream());}
+async function entryText(z,name){const s=entryStream(z,name);if(!s)return null;const rd=s.getReader();let o="";for(;;){const{done,value}=await rd.read();if(done)break;o+=value;}return o;}
+async function eachElement(z,name,closeTag,onItem){
+  const s=entryStream(z,name);if(!s)return;const rd=s.getReader();let buf="";
+  try{for(;;){const{done,value}=await rd.read();if(done)break;buf+=value;const cut=buf.lastIndexOf(closeTag);if(cut<0)continue;
+      const part=buf.slice(0,cut+closeTag.length);buf=buf.slice(cut+closeTag.length);let from=0,i;
+      while((i=part.indexOf(closeTag,from))>=0){if(onItem(part.slice(from,i))===false)return;from=i+closeTag.length;}}}
+  finally{rd.cancel().catch(()=>{});}
+}
+function colIdx(ref){let c=0;for(let j=0;j<ref.length;j++){const k=ref.charCodeAt(j);if(k<65||k>90)break;c=c*26+(k-64);}return c-1;}
+const CELL=/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
+function parseRow(frag,shared){
+  const s=frag.indexOf("<row");if(s<0)return null;const row=[];CELL.lastIndex=s;let m;
+  while((m=CELL.exec(frag))){const a=m[1],body=m[2];if(!body)continue;const r=/\br="([A-Z]+)/.exec(a),t=/\bt="(\w+)"/.exec(a),tt=t?t[1]:"";let val;
+    if(tt==="inlineStr"){val="";body.replace(/<t[^>]*>([^<]*)<\/t>/g,(x,y)=>{val+=y;});val=unx(val);}
+    else{const v=/<v>([^<]*)<\/v>/.exec(body);if(!v)continue;val=v[1];if(tt==="s")val=shared[+val]??"";else if(tt==="str")val=unx(val);else if(tt==="e")continue;}
+    row[r?colIdx(r[1]):row.length]=val;}
+  return row;
+}
+async function openXlsx(buf,progress){
+  const z=zipIndex(buf),shared=[];progress("Teksten inlezen…");
+  await eachElement(z,"xl/sharedStrings.xml","</si>",f=>{let t="";f.replace(/<t[^>]*>([^<]*)<\/t>/g,(x,y)=>{t+=y;});shared.push(unx(t));});
+  const xml=s=>new DOMParser().parseFromString(s,"application/xml");
+  const wb=xml(await entryText(z,"xl/workbook.xml")),rels=xml(await entryText(z,"xl/_rels/workbook.xml.rels"));
+  const rm={};for(const r of rels.getElementsByTagName("Relationship"))rm[r.getAttribute("Id")]=r.getAttribute("Target");
+  const sheets=[];
+  for(const s of wb.getElementsByTagName("sheet")){const rid=s.getAttribute("r:id")||s.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id");
+    let t=rm[rid];if(!t)continue;t=t.startsWith("/")?t.slice(1):("xl/"+t);sheets.push({name:s.getAttribute("name"),path:t});}
+  return {z,shared,sheets};
+}
+// Walk every sheet: classify(headerRowLowercase, rawHeader) returns a row handler or null (sheet skipped).
+async function walkSheets(x,progress,classify){
+  for(const sh of x.sheets){
+    let handler=null,seen=0,n=0;
+    await eachElement(x.z,sh.path,"</row>",frag=>{
+      const row=parseRow(frag,x.shared);if(!row)return;
+      if(!handler){const raw=Array.from(row,v=>norm(v));handler=classify(raw.map(v=>v.toLowerCase()),raw,sh.name);
+        if(handler){progress(`${sh.name} inlezen…`);return;} if(++seen>=6)return false;return;}
+      if(++n%20000===0)progress(`${sh.name}: ${n.toLocaleString("nl-BE")} rijen…`);
+      handler(row);
+    });
+  }
+}
+
+/* =================== Helpers =================== */
+const MONTHS=["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
+const MSHORT=["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+const norm=s=>String(s??"").trim();
+const key=s=>{s=norm(s);if(/^\d+(\.0+)?$/.test(s))s=s.replace(/\.0+$/,"").replace(/^0+/,"");return s.toLowerCase();};
+const kx=s=>norm(s).toLowerCase();   // exacte code (nullen vooraan tellen mee)
+const num=s=>{s=norm(s).replace(",",".");if(s==="")return null;const n=Number(s);return isFinite(n)?n:null;};
+const bc=s=>{s=norm(s);if(/e\+?\d+$/i.test(s)&&isFinite(+s))s=Number(s).toFixed(0);s=s.replace(/\.0+$/,"");return /^0*$/.test(s)?"":s;};   // "0" = geen barcode
+const pad=n=>String(n).padStart(2,"0");
+// Header → "jjjj-mm" (accepts "2026-01", "2026-01-01", "01/2026", Excel date numbers)
+function ym(h){h=norm(h);let m;
+  if((m=/^(\d{4})[-\/.](\d{1,2})(?:[-\/.]\d{1,2})?(?:[ T].*)?$/.exec(h)))return m[1]+"-"+pad(+m[2]);
+  if((m=/^(\d{1,2})[-\/.](\d{4})$/.exec(h)))return m[2]+"-"+pad(+m[1]);
+  if(/^\d{5}(\.\d+)?$/.test(h)){const d=new Date(Date.UTC(1899,11,30)+Math.floor(+h)*864e5);if(d.getUTCFullYear()>1990&&d.getUTCFullYear()<2100)return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1);}
+  return null;}
+const thisYM=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1);};
+const addM=(k,n)=>{let y=+k.slice(0,4),m=+k.slice(5)-1+n;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+"-"+pad(m+1);};
+
+/* =================== Parsers =================== */
+// Current file (new software): Barcode + Omschrijving + jjjj-mm columns
+async function parseCurrent(buf,progress){
+  const x=await openXlsx(buf,progress),items=[],cov=new Set();
+  await walkSheets(x,progress,(h,raw)=>{
+    const months=raw.map((v,i)=>[ym(v),i]).filter(v=>v[0]);
+    if(!h.includes("barcode")||!h.some(v=>/^oms/.test(v))||months.length<1)return null;
+    months.forEach(v=>cov.add(v[0]));const used=new Set(months.map(v=>v[1]));
+    const col=re=>{const i=h.findIndex((v,j)=>!used.has(j)&&re.test(v));if(i>=0)used.add(i);return i;};
+    const c={bar:col(/^barcode$/),oms:col(/^oms/),code:col(/retailpack|^code$|artikelcode|^artikel ?nr/),ref:col(/^ref|artikelref/),
+      be:col(/besteleenheid|^be$/),lev:col(/leverancier/),ikp:col(/^ikp/),vkp:col(/^vkp/),marge:col(/^marge/),stock:col(/^stock/),
+      min:col(/^min(imum)?$/),max:col(/^max(imum)?$/)};
+    const altCols=h.map((v,i)=>!used.has(i)&&/^(extra|oude|alt).*(barcode|code)|^ean ?\d/.test(v)?i:-1).filter(i=>i>=0);altCols.forEach(i=>used.add(i));
+    h.forEach((v,i)=>{if(/^totaal laatste|^jaar \d{4}|^\d{4}$/.test(v))used.add(i);});   // app rekent dit zelf uit
+    const extra=raw.map((v,i)=>[v,i]).filter(([v,i])=>v&&!used.has(i));
+    return row=>{
+      const g=i=>i>=0?row[i]:undefined,bar=bc(g(c.bar)),oms=norm(g(c.oms)),code=norm(g(c.code));
+      if(!bar&&!oms&&!code)return;
+      const m={};for(const[k,i] of months){const v=num(row[i]);if(v)m[k]=(m[k]||0)+v;}
+      const xt=[];for(const[l,i] of extra){const v=norm(row[i]);if(v!=="")xt.push([l,v]);}
+      const alt=[];for(const i of altCols){const v=norm(row[i]);if(v&&!/^0*$/.test(v)&&v!==bar&&!alt.includes(v))alt.push(v);}
+      items.push({alt:alt.length?alt:null,code,bar,oms,ref:norm(g(c.ref)),lev:norm(g(c.lev)),be:num(g(c.be)),ikp:num(g(c.ikp)),vkp:num(g(c.vkp)),
+        marge:num(g(c.marge)),stock:num(g(c.stock)),min:num(g(c.min)),max:num(g(c.max)),m,x:xt.length?xt:null});
+    };
+  });
+  if(!items.length)throw new Error("Geen blad gevonden met de kolommen Barcode, Omschrijving en maandkolommen (jjjj-mm).");
+  return {items,cov:[...cov]};
+}
+// History file (old software): article sheets (barcode + month names or jjjj-mm) and year sheets (code/barcode + jaartallen)
+async function parseHistory(buf,progress){
+  const x=await openXlsx(buf,progress),recs=new Map(),byCode=new Map(),cov=new Set();
+  const getRec=(bar,code)=>{const kc=kx(code);let r=(bar&&recs.get(bar))||(kc&&byCode.get(kc));
+    if(!r){r={bar:bar||"",oc:norm(code),oms:"",ref:"",y:{},m:{}};recs.set(bar||("#"+kc),r);}
+    if(kc&&!byCode.has(kc))byCode.set(kc,r);if(bar&&!r.bar)r.bar=bar;return r;};
+  await walkSheets(x,progress,(h,raw)=>{
+    const bi=h.indexOf("barcode"),ci=h.findIndex(v=>/code$/.test(v)&&v!=="barcode"),oi=h.findIndex(v=>/^oms/.test(v)),ri=h.findIndex(v=>/^ref/.test(v));
+    if(bi<0&&ci<0)return null;
+    const named=MONTHS.map(mn=>h.indexOf(mn)),hasNamed=named.filter(i=>i>=0).length>=3;
+    const yearCols=raw.map((v,i)=>/^20\d\d$/.test(v)?[i,+v]:null).filter(Boolean);
+    const ymCols=raw.map((v,i)=>[ym(v),i]).filter(v=>v[0]&&!/^20\d\d$/.test(raw[v[1]]));
+    let mcols=[],ycols=[];
+    if(hasNamed){const yr=yearCols.length?yearCols[0][1]:CUTY;named.forEach((i,k)=>{if(i>=0)mcols.push([yr+"-"+pad(k+1),i]);});}
+    else{mcols=ymCols;ycols=yearCols;}
+    if(!mcols.length&&!ycols.length)return null;
+    mcols=mcols.filter(([k])=>k<CUT);ycols=ycols.filter(([,y])=>y<CUTY);mcols.forEach(([k])=>cov.add(k));
+    const sheet={};   // marker: values of an article come from one sheet only (no double counting)
+    return row=>{
+      const bar=bi>=0?bc(row[bi]):"",code=ci>=0?norm(row[ci]):"";if(!bar&&!code)return;
+      let hasVal=false;const vals=[];
+      for(const[k,i] of mcols){const v=num(row[i]);if(v){vals.push(["m",k,v]);hasVal=true;}}
+      for(const[i,y] of ycols){const v=num(row[i]);if(v!==null&&v!==y&&v!==0){vals.push(["y",y,v]);hasVal=true;}}
+      const r=(bar&&recs.get(bar))||(code&&byCode.get(kx(code)));
+      if(!hasVal&&!r&&!(oi>=0&&bar))return;
+      const rec=r||getRec(bar,code);if(code&&!byCode.has(kx(code)))byCode.set(kx(code),rec);
+      if(!rec.oms&&oi>=0)rec.oms=norm(row[oi]);if(!rec.ref&&ri>=0)rec.ref=norm(row[ri]);if(!rec.oc&&code)rec.oc=code;
+      const mk=vals.some(v=>v[0]==="m"),yk=vals.some(v=>v[0]==="y");
+      if(mk){if(rec.ms&&rec.ms!==sheet)vals.splice(0,vals.length,...vals.filter(v=>v[0]!=="m"));else rec.ms=sheet;}
+      if(yk){if(rec.ys&&rec.ys!==sheet)vals.splice(0,vals.length,...vals.filter(v=>v[0]!=="y"));else rec.ys=sheet;}
+      for(const[t,k,v] of vals){const o=rec[t];o[k]=(o[k]||0)+v;}
+    };
+  });
+  const list=[...recs.values()].filter(r=>Object.keys(r.y).length||Object.keys(r.m).length);
+  for(const r of list){delete r.ms;delete r.ys;}
+  if(!list.length)throw new Error("Geen historiek gevonden (kolommen Barcode of CODE met maanden of jaartallen).");
+  return {recs:list,cov:[...cov].sort()};
+}
+
+/* =================== Storage (IndexedDB) =================== */
+let CUR=null,HIST=null,META={};const IX={};
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open("verkopen",2);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("kv"))r.result.createObjectStore("kv");};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}});}
+async function put(k,v){try{const db=await idb();await new Promise((res,rej)=>{const tx=db.transaction("kv","readwrite");tx.objectStore("kv").put(v,k);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});return true;}catch(e){return false;}}
+async function get(k){try{const db=await idb();return await new Promise((res,rej)=>{const r=db.transaction("kv").objectStore("kv").get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}catch(e){return undefined;}}
+// exact maps + 'loose' maps (zonder nullen vooraan) die alleen gelden als ze eenduidig zijn
+function addX(m,l,k,v){const e=kx(k),o=key(k);if(!e)return;if(!m.has(e))m.set(e,v);if(l.has(o)){if(l.get(o)!==v)l.set(o,null);}else l.set(o,v);}
+function buildIndex(){
+  for(const n of ["bar","code","codeL","ref","refL","hbar","hcode","hcodeL"])IX[n]=new Map();
+  if(CUR)for(const it of CUR.items){if(it.bar&&!IX.bar.has(it.bar))IX.bar.set(it.bar,it);addX(IX.code,IX.codeL,it.code,it);addX(IX.ref,IX.refL,it.ref,it);}
+  if(HIST)for(const r of HIST.recs){if(r.bar&&!IX.hbar.has(r.bar))IX.hbar.set(r.bar,r);addX(IX.hcode,IX.hcodeL,r.oc,r);}
+  // extra barcodes of the new software also find the article
+  if(CUR)for(const it of CUR.items)if(it.alt)for(const a of it.alt){const b=bc(a);if(b&&!IX.bar.has(b))IX.bar.set(b,it);}
+  // link: new article ← history records via barcode, extra barcodes or old codes
+  IX.link=new Map();IX.linked=new Set();
+  if(CUR&&HIST)for(const it of CUR.items){
+    const hs=[];const add=r=>{if(r&&!hs.includes(r))hs.push(r);};
+    if(it.bar)add(IX.hbar.get(it.bar));
+    if(it.alt)for(const a of it.alt){const b=bc(a);add((b&&IX.hbar.get(b))||IX.hcode.get(kx(a)));}   // exact: 00000641 ≠ 000000641
+    const keep=cleanLinks(it,hs);
+    if(keep.length){keep.forEach(r=>IX.linked.add(r));IX.link.set(it,keep.length===1?keep[0]:mergeHist(keep));}
+  }
+}
+// Meerdere oude artikels aan één nieuw artikel: (1) een oud artikel met een totaal andere omschrijving valt weg
+// als een ander gekoppeld artikel wél overeenkomt; (2) dubbele historiek (zelfde jaarcijfers) telt maar één keer.
+const toks=t=>new Set((String(t||"").toLowerCase().match(/[a-z0-9]+/g)||[]).filter(w=>w.length>2));
+function sim(a,b){const A=toks(a),B=toks(b);if(!A.size||!B.size)return null;let n=0;for(const w of A)if(B.has(w))n++;return n/Math.min(A.size,B.size);}
+function isDup(a,b){let c=0;for(let y=2000;y<CUTY;y++){const x=a.y[y],z=b.y[y];if(x&&z){if(x!==z)return false;c++;}}return c>=2;}
+function cleanLinks(it,hs){
+  if(hs.length<2)return hs;
+  const s=hs.map(h=>sim(it.oms,h.oms));let k=hs.filter((h,i)=>!(s[i]===0&&s.some(v=>v>0)));
+  const size=h=>Object.keys(h.y).length+Object.keys(h.m).length+(h.oms?100:0);
+  for(let i=0;i<k.length;i++)for(let j=i+1;j<k.length;j++)if(isDup(k[i],k[j])){const drop=size(k[i])>=size(k[j])?j:i;k.splice(drop,1);i=-1;break;}
+  return k;
+}
+function mergeHist(hs){const o={bar:hs[0].bar,oc:hs.map(r=>r.oc).filter(Boolean).join(", "),oms:hs[0].oms,ref:hs[0].ref,y:{},m:{},parts:hs.length};
+  for(const r of hs){for(const k in r.y)o.y[k]=(o.y[k]||0)+r.y[k];for(const k in r.m)o.m[k]=(o.m[k]||0)+r.m[k];}return o;}
+function curOfHist(h){if(!IX.linked.has(h))return null;for(const [c,x] of IX.link)if(x===h||(x.parts&&x.oc.split(", ").includes(h.oc)))return c;return null;}
+
+/* =================== Status =================== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=(n,d=0)=>n===null||n===undefined?"–":n.toLocaleString("nl-BE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const eur=n=>n===null||n===undefined?"–":"€ "+fmt(n,2);
+const dt=t=>{if(!t)return"–";const d=new Date(t);return d.toLocaleDateString("nl-BE",{day:"2-digit",month:"2-digit",year:"numeric"})+" "+d.toLocaleTimeString("nl-BE",{hour:"2-digit",minute:"2-digit"});};
+const lastCutM=()=>{const k=addM(CUT,-1);return MSHORT[+k.slice(5)-1]+" "+k.slice(0,4);};
+function setStatus(){
+  const old=CUR&&Date.now()-CUR.loadedAt>CFG.refreshHours*3600e3;
+  $("status").innerHTML=(CUR?`<b>Data vernieuwd: ${dt(CUR.loadedAt)}</b>${CUR.fileModified?` · Excel gewijzigd: ${dt(CUR.fileModified)}`:""}${old?` <span class="old">ouder dan ${CFG.refreshHours} u</span>`:""}`:"<b>Nog geen actuele data</b>")
+   +` · Historiek: ${HIST?`t.e.m. ${lastCutM()} ✓`:"niet geladen"}`;
+}
+
+/* =================== Combine history + current =================== */
+function series(cur,h){
+  const m={};
+  if(h)for(const k in h.m)if(k<CUT)m[k]=h.m[k];
+  if(cur)for(const k in cur.m)if(k>=CUT)m[k]=(m[k]||0)+cur.m[k];
+  const year=y=>{if(h&&y<CUTY&&h.y[y]!==undefined)return h.y[y];let s=0,any=false;for(const k in m)if(k.startsWith(y+"-")){s+=m[k];any=true;}
+    return any||y>=CUTY?s:(h&&Object.keys(h.y).length?0:null);};
+  return {m,year};
+}
+
+/* =================== Search =================== */
+function lookup(raw){
+  const q=norm(raw);if(!q)return{list:[]};let b=bc(q),ke=kx(q),kl=key(q);
+  const find=b=>{let c=IX.bar.get(b)||IX.code.get(ke)||IX.ref.get(ke);let h=null;
+    if(!c)h=IX.hbar.get(b)||IX.hcode.get(ke)||null;
+    const loose=!/^0/.test(q);   // zonder nullen vooraan getypt → mag ruimer zoeken als het eenduidig is
+    if(!c&&!h&&loose)c=IX.codeL.get(kl)||IX.refL.get(kl)||null;
+    if(!c&&!h&&loose)h=IX.hcodeL.get(kl)||null;
+    if(!c&&h)c=curOfHist(h);
+    if(c)h=IX.link.get(c)||null;
+    return c||h?{cur:c,hist:h}:null;};
+  let r=find(b);
+  if(!r&&/^\d{12}$/.test(b))r=find("0"+b);
+  if(!r&&/^0\d{12}$/.test(b))r=find(b.slice(1));
+  if(r)return r;
+  const w=q.toLowerCase().split(/\s+/),list=[];
+  if(CUR)for(const x of CUR.items){const s=(x.oms+" "+x.code+" "+x.ref+" "+x.bar+" "+x.lev).toLowerCase();if(w.every(t=>s.includes(t))){list.push({cur:x,hist:IX.link.get(x)||null});if(list.length>=40)break;}}
+  if(HIST&&list.length<40)for(const x of HIST.recs){if(!x.oms||IX.linked.has(x))continue;const s=(x.oms+" "+x.oc+" "+x.bar).toLowerCase();if(w.every(t=>s.includes(t))){list.push({cur:null,hist:x});if(list.length>=40)break;}}
+  return {list};
+}
+
+/* =================== Rendering =================== */
+const out=$("out");
+function render({cur,hist}){
+  const S=series(cur,hist),Y=new Date().getFullYear(),nowK=thisYM();
+  const base=cur||{code:hist.oc,bar:hist.bar,oms:hist.oms,ref:hist.ref};
+  // last 12 months
+  const covH=new Set(HIST?HIST.cov:[]),covC=new Set(CUR?CUR.cov:[]);
+  let l12=0,miss=[];for(let i=0;i<12;i++){const k=addM(nowK,-i);if(S.m[k])l12+=S.m[k];if(!(k<CUT?covH.has(k):(covC.has(k)||k>=nowK)))miss.push(MSHORT[+k.slice(5)-1]+" "+k.slice(2,4));}
+  const marge=cur?(cur.marge??(cur.ikp&&cur.vkp?cur.vkp/cur.ikp:null)):null;
+  const low=cur&&cur.min>0&&cur.stock!==null&&cur.stock<=cur.min;
+  const tile=(l,v,s="",cls="",t=false)=>`<div class="tile ${cls}"><div class="l">${esc(l)}</div><div class="v${t?" t":""}">${v}</div>${s?`<div class="s">${s}</div>`:""}</div>`;
+  let tiles=tile(`Verkocht ${Y}`,fmt(S.year(Y)),Y===CUTY?(cur?"oude + nieuwe software":"alleen oude software"):"","hl")
+    +tile("Laatste 12 maanden",fmt(l12),miss.length?`zonder ${miss.length>2?miss.length+" maanden":miss.join(", ")}`:"");
+  if(cur){
+    tiles+=tile("Stock",fmt(cur.stock),low?"onder minimum":"",low?"low":"")+tile("IKP",eur(cur.ikp))+tile("VKP",eur(cur.vkp))
+      +tile("Marge",marge!==null?fmt(marge,2):"–","VKP ÷ IKP")+tile("Besteleenheid",fmt(cur.be));
+    if(cur.min!==null||cur.max!==null)tiles+=tile("Min / Max",`${fmt(cur.min)} / ${fmt(cur.max)}`);
+    if(cur.x)for(const[l,v] of cur.x)tiles+=tile(l,esc(v),"","",isNaN(+v));
+  }
+  // month chart: current year (+ previous year ghost)
+  const cy=[],py=[];let anyPrev=false;
+  for(let i=1;i<=12;i++){cy.push(S.m[Y+"-"+pad(i)]||0);const p=S.m[(Y-1)+"-"+pad(i)];if(p!==undefined)anyPrev=true;py.push(p||0);}
+  // year chart
+  const ys=new Set();if(hist)Object.keys(hist.y).forEach(y=>ys.add(+y));Object.keys(S.m).forEach(k=>ys.add(+k.slice(0,4)));ys.add(Y);
+  const yl=[...ys].filter(y=>y<=Y).sort();const from=yl[0];const years=[];for(let y=from;y<=Y;y++)years.push({y,v:S.year(y)??0,cur:y===Y});
+  out.innerHTML=`
+  <div class="card">
+    <div class="title">${esc(base.oms)||"(geen omschrijving)"}${!cur?`<span class="badge">alleen in oude software</span>`:""}</div>
+    <div class="ids">
+      <div class="chip"><span>Code</span>${esc(base.code)||"–"}</div>
+      ${cur&&hist&&hist.oc&&key(hist.oc)!==key(cur.code)?`<div class="chip"><span>Oude code${hist.parts?"s":""}</span>${esc(hist.oc)}</div>`:""}
+      ${cur&&cur.alt?`<div class="chip"><span>Extra</span>${esc(cur.alt.join(", "))}</div>`:""}
+      <div class="chip"><span>RefArt</span>${esc(base.ref)||"–"}</div>
+      <div class="chip"><span>Barcode</span>${esc(base.bar)||"–"}</div>
+      ${cur&&cur.lev?`<div class="chip"><span>Leverancier</span>${esc(cur.lev)}</div>`:""}
+    </div>
+  </div>
+  <div class="tiles">${tiles}</div>
+  <div class="grid">
+    <div class="card"><h2>${Y} per maand</h2>${bars(cy,anyPrev?py:null,Y)}
+      <div class="legend"><span><i style="background:#3d7a4f"></i>${Y}</span>${anyPrev?`<span><i style="background:#d9ddd8"></i>${Y-1}</span>`:""}${Y===CUTY?`<span>┆ nieuwe software vanaf ${MSHORT[+CUT.slice(5)-1]}</span>`:""}</div></div>
+    <div class="card"><h2>Per jaar</h2>${years.length>1||years[0].v?line(years):'<div class="muted">Geen jaarcijfers voor dit artikel.</div>'}</div>
+  </div>
+  <div class="foot">Actuele data: ${CUR?dt(CUR.loadedAt):"–"} · Historiek t.e.m. ${lastCutM()}${HIST?"":" (niet geladen)"}</div>`;
+}
+function bars(m,prev,Y){
+  const W=520,H=230,pl=8,pr=8,pt=22,pb=26,max=Math.max(1,...m.map(Math.abs),...(prev||[]).map(Math.abs));
+  const now=new Date(),curM=now.getFullYear()>Y?12:now.getMonth()+1,bw=(W-pl-pr)/12,ih=H-pt-pb;let g="";
+  const cutIdx=CUTY===Y?+CUT.slice(5)-1:-1;
+  if(cutIdx>0){const x=pl+cutIdx*bw;g+=`<line x1="${x}" y1="${pt-14}" x2="${x}" y2="${H-pb}" stroke="#9aa39e" stroke-dasharray="3 4"/>`;}
+  m.forEach((v,i)=>{
+    const fut=i+1>curM,x0=pl+i*bw;
+    if(prev){const p=prev[i],h=Math.max(p?2:0,Math.abs(p)/max*ih);g+=`<rect x="${(x0+bw*.12).toFixed(1)}" y="${(pt+ih-(p>0?h:0)).toFixed(1)}" width="${(bw*.38).toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="#d9ddd8"/>`;}
+    const h=Math.max(v?2:0,Math.abs(v)/max*ih),bx=prev?x0+bw*.48:x0+bw*.15,bwid=prev?bw*.4:bw*.7,y=pt+ih-(v>0?h:0);
+    g+=`<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bwid.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fut?"#e4e7e3":v<0?"#b5462f":"#3d7a4f"}"/>`;
+    if(!(fut&&!v))g+=`<text x="${(x0+bw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle" font-size="${prev?12:14}" font-weight="700" fill="#1c2321">${fmt(v)}</text>`;
+    g+=`<text x="${(x0+bw/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="13" fill="#6b736f">${MSHORT[i]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Verkopen per maand">${g}</svg>`;
+}
+function line(ys){
+  const W=520,H=230,pl=20,pr=22,pt=26,pb=26,vals=ys.map(d=>d.v);let mn=Math.min(...vals),mx=Math.max(...vals);
+  if(mx===mn){mx+=1;mn=Math.max(0,mn-1);}const p=(mx-mn)*.15;mn=Math.max(0,mn-p);mx+=p;
+  const X=i=>pl+(ys.length===1?(W-pl-pr)/2:i*(W-pl-pr)/(ys.length-1)),Yp=v=>pt+(1-(v-mn)/(mx-mn))*(H-pt-pb);
+  const full=ys.filter(d=>!d.cur),last=ys.length-1;
+  let g=full.length>1?`<polyline fill="none" stroke="#3d7a4f" stroke-width="3" stroke-linejoin="round" points="${full.map((d,i)=>X(i).toFixed(1)+","+Yp(d.v).toFixed(1)).join(" ")}"/>`:"";
+  if(ys[last].cur&&last>0)g+=`<line x1="${X(last-1)}" y1="${Yp(ys[last-1].v)}" x2="${X(last)}" y2="${Yp(ys[last].v)}" stroke="#9cc3a6" stroke-width="3" stroke-dasharray="5 5"/>`;
+  const small=ys.length>11;
+  ys.forEach((d,i)=>{const c=d.cur?"#9cc3a6":"#3d7a4f";
+    g+=`<circle cx="${X(i)}" cy="${Yp(d.v)}" r="5" fill="#fff" stroke="${c}" stroke-width="3"/>`;
+    g+=`<text x="${X(i)}" y="${Yp(d.v)-11}" text-anchor="middle" font-size="${small?11:13}" font-weight="700" fill="#1c2321">${fmt(d.v)}</text>`;
+    g+=`<text x="${X(i)}" y="${H-6}" text-anchor="middle" font-size="12" fill="#6b736f">’${String(d.y).slice(2)}${d.cur?"*":""}</text>`;});
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Verkopen per jaar">${g}</svg><div class="legend">* lopend jaar</div>`;
+}
+function renderList(list,q){
+  if(!list.length){out.innerHTML=`<div class="card empty"><b>Niets gevonden</b>Geen artikel met barcode, code of omschrijving “${esc(q)}”.</div>`;return;}
+  out.innerHTML=`<div class="card list"><h2>${list.length}${list.length>=40?"+":""} resultaten</h2>${list.map((r,i)=>{const b=r.cur||{oms:r.hist.oms,code:r.hist.oc,bar:r.hist.bar};
+    return `<button data-i="${i}">${esc(b.oms)}${r.cur?"":'<span class="badge">oude software</span>'}<small>${esc(b.code)} · ${esc(b.bar)}${r.cur&&r.cur.lev?" · "+esc(r.cur.lev):""}</small></button>`;}).join("")}</div>`;
+  out.querySelectorAll("button[data-i]").forEach(b=>b.onclick=()=>{render(list[+b.dataset.i]);window.scrollTo(0,0);});
+}
+function home(extra=""){
+  out.innerHTML=extra+(CUR||HIST?`<div class="card empty"><b>Klaar om te scannen</b>Scan een barcode of typ een code, RefArt, leverancier of omschrijving.</div>`
+    :`<div class="card empty"><b>Nog geen data</b>${OD.enabled?"Tik op ↻ om de data uit OneDrive op te halen.":"Tik op ☰ en laad je Excel-bestanden."}</div>`);
+}
+
+/* =================== Loading files =================== */
+async function loadCurrent(buf,name,modified){
+  const t0=Date.now(),pg=t=>{out.innerHTML=`<div class="card empty"><b>Actuele data inlezen…</b>${esc(t)}<br><small>${Math.round((Date.now()-t0)/1000)} s</small></div>`;};
+  pg(name);const d=await parseCurrent(buf,pg);
+  CUR=Object.assign(d,{fileName:name,loadedAt:Date.now(),fileModified:modified||null});buildIndex();setStatus();
+  const ok=await put("current",CUR);return {n:CUR.items.length,ok};
+}
+async function loadHistory(buf,name){
+  const t0=Date.now(),pg=t=>{out.innerHTML=`<div class="card empty"><b>Historiek inlezen (eenmalig)…</b>${esc(t)}<br><small>${Math.round((Date.now()-t0)/1000)} s · groot bestand, even geduld</small></div>`;};
+  pg(name);const d=await parseHistory(buf,pg);
+  HIST=Object.assign(d,{fileName:name,loadedAt:Date.now()});buildIndex();setStatus();
+  const ok=await put("history",HIST);return {n:HIST.recs.length,ok};
+}
+const warnSave=ok=>ok?"":"<br><small>Let op: kon niet op dit toestel bewaren.</small>";
+$("fileCur").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;closeSheet();
+  try{const r=await loadCurrent(await f.arrayBuffer(),f.name,f.lastModified);home(`<div class="msg">Actuele data geladen: ${r.n.toLocaleString("nl-BE")} artikels.${warnSave(r.ok)}</div>`);}
+  catch(err){out.innerHTML=`<div class="msg">Kon de Excel niet lezen: ${esc(err.message)}</div>`;}});
+$("fileHist").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;closeSheet();
+  try{const r=await loadHistory(await f.arrayBuffer(),f.name);home(`<div class="msg">Historiek geladen: ${r.n.toLocaleString("nl-BE")} artikels. Die blijft bewaard op dit toestel.${warnSave(r.ok)}</div>`);}
+  catch(err){out.innerHTML=`<div class="msg">Kon de historiek niet lezen: ${esc(err.message)}</div>`;}});
+
+/* =================== OneDrive (Microsoft login + Graph) =================== */
+const OD=(()=>{
+  const inFrame=(()=>{try{return window.self!==window.top;}catch(e){return true;}})();
+  const enabled=!!CFG.clientId&&location.protocol==="https:"&&!inFrame;
+  const AUTH=`https://login.microsoftonline.com/${CFG.tenant||"common"}/oauth2/v2.0`;
+  const SCOPE="openid offline_access Files.Read.All";
+  const redirect=location.origin+location.pathname;
+  const b64u=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  const rnd=n=>b64u(crypto.getRandomValues(new Uint8Array(n)));
+  const tok=()=>{try{return JSON.parse(localStorage.getItem("od_tok")||"null");}catch(e){return null;}};
+  const setTok=t=>{try{t?localStorage.setItem("od_tok",JSON.stringify(t)):localStorage.removeItem("od_tok");}catch(e){}};
+  async function login(silent){
+    const verifier=rnd(48),state=rnd(16);
+    const ch=b64u(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier)));
+    sessionStorage.setItem("od_pkce",JSON.stringify({verifier,state,silent:!!silent}));
+    const p=new URLSearchParams({client_id:CFG.clientId,response_type:"code",redirect_uri:redirect,scope:SCOPE,code_challenge:ch,code_challenge_method:"S256",state,response_mode:"query"});
+    if(silent)p.set("prompt","none");
+    location.assign(`${AUTH}/authorize?${p}`);
+  }
+  async function token(body){
+    const r=await fetch(`${AUTH}/token`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams(Object.assign({client_id:CFG.clientId,scope:SCOPE},body))});
+    const j=await r.json();if(!r.ok)throw new Error(j.error_description||j.error||"Aanmelden mislukt");
+    setTok({at:j.access_token,exp:Date.now()+(j.expires_in-120)*1000,rt:j.refresh_token||null});return j.access_token;
+  }
+  // Returns {done:true} after handling a redirect from Microsoft, or {needLogin:true}
+  async function handleRedirect(){
+    const p=new URLSearchParams(location.search);if(!p.has("code")&&!p.has("error"))return{};
+    const saved=JSON.parse(sessionStorage.getItem("od_pkce")||"null");sessionStorage.removeItem("od_pkce");
+    history.replaceState(null,"",redirect);
+    if(p.has("error")){return{needLogin:true,error:p.get("error_description")||p.get("error"),silent:saved&&saved.silent};}
+    if(!saved||saved.state!==p.get("state"))return{needLogin:true,error:"Ongeldige aanmelding, probeer opnieuw."};
+    await token({grant_type:"authorization_code",code:p.get("code"),redirect_uri:redirect,code_verifier:saved.verifier});
+    return{done:true};
+  }
+  async function access(){
+    const t=tok();if(t&&t.at&&Date.now()<t.exp)return t.at;
+    if(t&&t.rt){try{return await token({grant_type:"refresh_token",refresh_token:t.rt});}catch(e){setTok(null);}}
+    return null;
+  }
+  async function graph(path,at){const r=await fetch("https://graph.microsoft.com/v1.0"+path,{headers:{Authorization:"Bearer "+at}});
+    if(r.status===401){setTok(null);throw Object.assign(new Error("Aanmelding verlopen"),{auth:true});}
+    if(!r.ok){let m="";try{m=(await r.json()).error.message;}catch(e){}throw new Error(`OneDrive: ${r.status} ${m}`);}return r.json();}
+  function itemPath(spec){spec=norm(spec);
+    if(/^https?:\/\//i.test(spec))return"/shares/u!"+btoa(unescape(encodeURIComponent(spec))).replace(/=+$/,"").replace(/\//g,"_").replace(/\+/g,"-")+"/driveItem";
+    return"/me/drive/root:/"+spec.replace(/^\/+/,"").split("/").map(encodeURIComponent).join("/")+":";}
+  async function info(spec,at){return graph(itemPath(spec),at);}
+  async function download(it,at,label){
+    const url=it["@microsoft.graph.downloadUrl"];
+    const r=url?await fetch(url):await fetch("https://graph.microsoft.com/v1.0"+itemPathFromItem(it)+"/content",{headers:{Authorization:"Bearer "+at}});
+    if(!r.ok)throw new Error(`Downloaden van ${label} mislukt (${r.status})`);return r.arrayBuffer();}
+  const itemPathFromItem=it=>`/drives/${it.parentReference.driveId}/items/${it.id}`;
+  return {enabled,inFrame,login,handleRedirect,access,info,download,signedIn:()=>!!tok(),logout:()=>setTok(null)};
+})();
+
+let syncing=false;
+async function sync(force){
+  if(!OD.enabled||syncing)return;
+  if(!navigator.onLine){if(force)home(`<div class="msg">Geen internet. Je werkt verder met de data van ${dt(CUR&&CUR.loadedAt)}.</div>`);return;}
+  const due=!CUR||Date.now()-(META.lastCheck||0)>CFG.refreshHours*3600e3||(!HIST&&CFG.historyFile);
+  if(!force&&!due)return;
+  syncing=true;
+  try{
+    const at=await OD.access();
+    if(!at){
+      const tried=sessionStorage.getItem("od_silent");
+      if(force)return OD.login(false);
+      if(!tried){sessionStorage.setItem("od_silent","1");return OD.login(true);}
+      home(`<div class="msg">Je data is ouder dan ${CFG.refreshHours} uur. Meld je aan bij Microsoft om te vernieuwen.<br><button class="btn" onclick="OD.login(false)">Aanmelden en vernieuwen</button></div>`);return;
+    }
+    let msgs=[];
+    if(!HIST&&CFG.historyFile){const it=await OD.info(CFG.historyFile,at);const r=await loadHistory(await OD.download(it,at,"historiek"),it.name);msgs.push(`Historiek geladen (${r.n.toLocaleString("nl-BE")} artikels).`);}
+    if(CFG.currentFile){
+      const it=await OD.info(CFG.currentFile,at),mod=Date.parse(it.lastModifiedDateTime)||null;
+      if(force||!CUR||CUR.fileModified!==mod){const r=await loadCurrent(await OD.download(it,at,"actuele data"),it.name,mod);msgs.push(`Actuele data vernieuwd (${r.n.toLocaleString("nl-BE")} artikels).`);}
+      else{CUR.loadedAt=Date.now();await put("current",CUR);msgs.push("Geen nieuwe data in OneDrive.");}
+    }
+    META.lastCheck=Date.now();await put("meta",META);setStatus();
+    home(force||msgs.length>1||!/Geen nieuwe/.test(msgs[0]||"")?`<div class="msg">${msgs.join(" ")}</div>`:"");
+  }catch(err){
+    if(err.auth&&!force)return OD.login(false);
+    home(`<div class="msg">Vernieuwen lukte niet: ${esc(err.message)}${CUR?`<br>Je werkt verder met de data van ${dt(CUR.loadedAt)}.`:""}</div>`);
+  }finally{syncing=false;}
+}
+
+/* =================== Settings sheet =================== */
+function openSheet(){
+  const odTxt=OD.enabled?(OD.signedIn()?"Aangemeld bij Microsoft.":"Niet aangemeld.")
+    :(OD.inFrame?"Niet beschikbaar in deze testweergave (werkt op je eigen webadres).":"Nog niet ingesteld in config.js.");
+  $("panel").innerHTML=`<h3><span>Gegevens</span><button class="btn" style="background:var(--brand)" onclick="closeSheet()">Klaar</button></h3>
+  <div class="sec"><b>Actuele data (nieuwe software)</b>
+    ${CUR?`${esc(CUR.fileName)}<br>${CUR.items.length.toLocaleString("nl-BE")} artikels · vernieuwd ${dt(CUR.loadedAt)}${CUR.fileModified?`<br>Excel gewijzigd ${dt(CUR.fileModified)}`:""}`:'<span class="muted">Nog niet geladen</span>'}
+    <div class="muted" style="margin-top:6px">Wordt maximaal 1× per ${CFG.refreshHours} uur gecontroleerd.</div>
+    <div class="row">${OD.enabled?'<button class="btn p" onclick="closeSheet();sync(true)">Nu vernieuwen uit OneDrive</button>':""}<button class="btn" onclick="$('fileCur').click()">Excel kiezen…</button></div></div>
+  <div class="sec"><b>Historiek (oude software, t.e.m. ${lastCutM()})</b>
+    ${HIST?`${esc(HIST.fileName)}<br>${HIST.recs.length.toLocaleString("nl-BE")} artikels · geladen ${dt(HIST.loadedAt)}<div class="muted" style="margin-top:6px">Wordt niet meer opnieuw geladen.</div>`:'<span class="muted">Nog niet geladen – eenmalig nodig.</span>'}
+    <div class="row">${OD.enabled&&CFG.historyFile?'<button class="btn" onclick="reloadHist()">Opnieuw uit OneDrive</button>':""}<button class="btn" onclick="$('fileHist').click()">Historiek-Excel kiezen…</button></div></div>
+  <div class="sec"><b>OneDrive</b>${odTxt}
+    ${OD.enabled?`<div class="row">${OD.signedIn()?'<button class="btn" onclick="OD.logout();openSheet()">Afmelden</button>':'<button class="btn p" onclick="OD.login(false)">Aanmelden</button>'}</div>`:""}</div>
+  <div class="sec muted">Overgang naar nieuwe software: ${CUT} · App-versie 2.0</div>`;
+  $("sheet").style.display="flex";
+}
+function closeSheet(){$("sheet").style.display="none";}
+async function reloadHist(){closeSheet();HIST=null;await put("history",null);buildIndex();sync(true);}
+$("sheet").addEventListener("click",e=>{if(e.target.id==="sheet")closeSheet();});
+$("setBtn").onclick=openSheet;
+$("refreshBtn").onclick=()=>OD.enabled?sync(true):openSheet();
+
+/* =================== Search events =================== */
+const q=$("q");
+function search(v){if(!CUR&&!HIST){home();return;}const r=lookup(v);if(r.cur||r.hist)render(r);else renderList(r.list,v);}
+$("form").addEventListener("submit",e=>{e.preventDefault();search(q.value);q.select();});
+
+/* =================== Camera =================== */
+const cam=$("cam"),video=$("video");let stream=null,stopScan=null;
+const ZX="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js";
+function closeCam(){cam.style.display="none";if(stopScan)stopScan();stopScan=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;}
+$("camClose").onclick=closeCam;
+function found(code){closeCam();q.value=code;search(code);if(navigator.vibrate)navigator.vibrate(60);}
+const loadScript=src=>new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+$("camBtn").onclick=async()=>{
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280}},audio:false});}
+  catch(e){out.insertAdjacentHTML("afterbegin",`<div class="msg">De camera is hier niet beschikbaar. Gebruik de handscanner of typ de code.${OD.inFrame?" In de versie op je eigen webadres werkt de camera wel.":" Geef de app toegang tot de camera in je instellingen."}</div>`);return;}
+  cam.style.display="flex";video.srcObject=stream;await video.play().catch(()=>{});let alive=true;stopScan=()=>{alive=false;};
+  if("BarcodeDetector" in window){const det=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf"]});
+    const tick=async()=>{if(!alive)return;try{const r=await det.detect(video);if(r.length)return found(r[0].rawValue);}catch(e){}setTimeout(tick,150);};tick();}
+  else{try{if(!window.ZXing)await loadScript(ZX);
+      const hints=new Map();hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.ITF]);hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
+      const reader=new ZXing.BrowserMultiFormatReader(hints);stopScan=()=>{alive=false;try{reader.reset();}catch(e){}};
+      if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;
+      reader.decodeFromConstraints({video:{facingMode:{ideal:"environment"}}},video,res=>{if(res&&alive)found(res.getText());});}
+    catch(e){closeCam();out.insertAdjacentHTML("afterbegin",`<div class="msg">Barcodelezer kon niet laden (eerste keer is internet nodig). Gebruik de handscanner of typ de code.</div>`);}}
+};
+
+/* =================== Start =================== */
+(async()=>{
+  if("serviceWorker" in navigator&&location.protocol==="https:"&&!OD.inFrame){try{navigator.serviceWorker.register("sw.js");}catch(e){}}
+  [CUR,HIST,META]=await Promise.all([get("current"),get("history"),get("meta")]);META=META||{};
+  buildIndex();setStatus();home();
+  if(OD.enabled){
+    let r={};try{r=await OD.handleRedirect();}catch(e){r={needLogin:true,error:e.message};}
+    if(r.needLogin&&!r.silent){home(`<div class="msg">Aanmelden bij Microsoft lukte niet: ${esc(r.error||"")}<br><button class="btn" onclick="OD.login(false)">Opnieuw aanmelden</button></div>`);return;}
+    if(r.done)sessionStorage.removeItem("od_silent");
+    sync(!!r.done);
+  }
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")sync(false);});
+})();
+</script>
+</body>
+</html>
