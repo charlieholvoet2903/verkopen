@@ -1,12 +1,12 @@
 // Offline-ondersteuning: bewaart de app (niet de data) op het toestel.
-const CACHE = "verkopen-v1";
+const CACHE = "verkopen-v2";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const ZX = "https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js";
 
 self.addEventListener("install", e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
-    await c.addAll(SHELL);
+    await c.addAll(SHELL.map(u => new Request(u, { cache: "reload" })));
     try { await c.put(ZX, await fetch(ZX, { mode: "no-cors" })); } catch (err) {}
     self.skipWaiting();
   })());
@@ -29,7 +29,8 @@ self.addEventListener("fetch", e => {
     const c = await caches.open(CACHE);
     const key = req.mode === "navigate" ? "./" : req;
     const cached = await c.match(key, { ignoreSearch: true });
-    const net = fetch(req).then(r => {
+    // altijd de nieuwste versie ophalen (niet uit de browsercache), de bewaarde kopie dient als offline-reserve
+    const net = fetch(own ? new Request(req.url, { cache: "no-cache", credentials: "same-origin" }) : req).then(r => {
       if (r && (r.ok || r.type === "opaque")) c.put(key, r.clone());
       return r;
     }).catch(() => cached);
