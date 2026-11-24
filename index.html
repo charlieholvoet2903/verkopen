@@ -54,6 +54,13 @@ h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transf
 .list button small{color:var(--muted);display:block}
 .msg{padding:12px 14px;border-radius:12px;background:#fff4dd;margin-bottom:14px;font-size:14px}
 .msg button{margin-top:8px;background:var(--brand)}
+.dl{display:flex;flex-direction:column;gap:10px}
+.dlr{display:grid;grid-template-columns:minmax(120px,40%) 1fr auto;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.dlr:last-child{border-bottom:0}
+.dld b{display:block;font-size:15px;text-transform:capitalize}.dld small{color:var(--muted);font-size:12px}
+.dlb{height:14px;background:var(--soft);border-radius:7px;overflow:hidden}.dlb i{display:block;height:100%;background:var(--accent2);border-radius:7px}
+.dlr.first .dlb i{background:var(--accent)}
+.dlq{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;min-width:40px;text-align:right}
 .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:4px}
 #cam{position:fixed;inset:0;background:#000;z-index:20;display:none;flex-direction:column}
 #cam video{flex:1;width:100%;object-fit:cover}
@@ -191,6 +198,7 @@ async function parseCurrent(buf,progress){
       be:col(/besteleenheid|^be$/),lev:col(/leverancier/),ikp:col(/^ikp/),vkp:col(/^vkp/),marge:col(/^marge/),stock:col(/^stock/),
       min:col(/^min(imum)?$/),max:col(/^max(imum)?$/)};
     const altCols=h.map((v,i)=>!used.has(i)&&/^(extra|oude|alt).*(barcode|code)|^ean ?\d/.test(v)?i:-1).filter(i=>i>=0);altCols.forEach(i=>used.add(i));
+    const levCols=h.map((v,i)=>!used.has(i)&&/^levering/.test(v)?i:-1).filter(i=>i>=0);levCols.forEach(i=>used.add(i));
     h.forEach((v,i)=>{if(/^totaal laatste|^jaar \d{4}|^\d{4}$/.test(v))used.add(i);});   // app rekent dit zelf uit
     const extra=raw.map((v,i)=>[v,i]).filter(([v,i])=>v&&!used.has(i));
     return row=>{
@@ -199,7 +207,10 @@ async function parseCurrent(buf,progress){
       const m={};for(const[k,i] of months){const v=num(row[i]);if(v)m[k]=(m[k]||0)+v;}
       const xt=[];for(const[l,i] of extra){const v=norm(row[i]);if(v!=="")xt.push([l,v]);}
       const alt=[];for(const i of altCols){const v=norm(row[i]);if(v&&!/^0*$/.test(v)&&v!==bar&&!alt.includes(v))alt.push(v);}
-      items.push({alt:alt.length?alt:null,code,bar,oms,ref:norm(g(c.ref)),lev:norm(g(c.lev)),be:num(g(c.be)),ikp:num(g(c.ikp)),vkp:num(g(c.vkp)),
+      const dl=[];for(const i of levCols){const v=norm(row[i]),m=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\s*;\s*(-?[\d.,]+)$/.exec(v);
+        if(m){const y=m[3].length===2?"20"+m[3]:m[3];dl.push([y+"-"+pad(+m[2])+"-"+pad(+m[1]),num(m[4])]);}}
+      dl.sort((a,b)=>a[0]<b[0]?1:-1);
+      items.push({dl:dl.length?dl:null,alt:alt.length?alt:null,code,bar,oms,ref:norm(g(c.ref)),lev:norm(g(c.lev)),be:num(g(c.be)),ikp:num(g(c.ikp)),vkp:num(g(c.vkp)),
         marge:num(g(c.marge)),stock:num(g(c.stock)),min:num(g(c.min)),max:num(g(c.max)),m,x:xt.length?xt:null});
     };
   });
@@ -369,9 +380,20 @@ function render({cur,hist}){
   <div class="grid">
     <div class="card"><h2>${Y} per maand</h2>${bars(cy,anyPrev?py:null,Y)}
       <div class="legend"><span><i style="background:#3d7a4f"></i>${Y}</span>${anyPrev?`<span><i style="background:#d9ddd8"></i>${Y-1}</span>`:""}${Y===CUTY?`<span>┆ nieuwe software vanaf ${MSHORT[+CUT.slice(5)-1]}</span>`:""}</div></div>
+    ${cur?`<div class="card"><h2>Laatste leveringen</h2>${deliveries(cur.dl)}</div>`:""}
     <div class="card"><h2>Per jaar</h2>${years.length>1||years[0].v?line(years):'<div class="muted">Geen jaarcijfers voor dit artikel.</div>'}</div>
   </div>
   <div class="foot">Actuele data: ${CUR?dt(CUR.loadedAt):"–"} · Historiek t.e.m. ${lastCutM()}${HIST?"":" (niet geladen)"}</div>`;
+}
+function deliveries(dl){
+  if(!dl)return'<div class="muted">Geen leveringen geregistreerd.</div>';
+  const max=Math.max(1,...dl.map(d=>Math.abs(d[1]||0))),today=new Date();today.setHours(0,0,0,0);
+  const ago=iso=>{const d=Math.round((today-new Date(iso+"T00:00:00"))/864e5);return d<=0?"vandaag":d===1?"gisteren":d+" dagen geleden";};
+  const nl=iso=>new Date(iso+"T00:00:00").toLocaleDateString("nl-BE",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"});
+  const tot=dl.reduce((s,d)=>s+(d[1]||0),0);
+  return `<div class="dl">${dl.map((d,i)=>`<div class="dlr${i===0?" first":""}"><div class="dld"><b>${nl(d[0])}</b><small>${ago(d[0])}</small></div>
+    <div class="dlb"><i style="width:${Math.max(4,Math.abs(d[1]||0)/max*100).toFixed(0)}%"></i></div><div class="dlq">${fmt(d[1])}</div></div>`).join("")}</div>
+    <div class="legend" style="margin-top:8px">Samen ${fmt(tot)} stuks in de laatste ${dl.length} levering${dl.length>1?"en":""}</div>`;
 }
 function bars(m,prev,Y){
   const W=520,H=230,pl=8,pr=8,pt=22,pb=26,max=Math.max(1,...m.map(Math.abs),...(prev||[]).map(Math.abs));
