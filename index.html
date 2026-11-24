@@ -92,7 +92,7 @@ h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transf
 
 <main id="out"></main>
 
-<div id="cam"><video id="video" playsinline muted></video><div class="bar"></div><button class="btn close" id="camClose">Sluiten</button><div class="hint">Richt de camera op de barcode</div></div>
+<div id="cam"><video id="video" playsinline muted></video><div class="bar"></div><button class="btn close" id="camClose">Sluiten</button><div class="hint">Houd de barcode horizontaal op ± 20 cm</div></div>
 
 <div id="sheet"><div class="panel" id="panel"></div></div>
 <input type="file" id="fileCur" accept=".xlsx,.xlsm" hidden>
@@ -100,7 +100,7 @@ h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transf
 
 <script>
 "use strict";
-const CFG=Object.assign({clientId:"",loginHint:"",tenant:"common",currentFile:"",historyFile:"",cutover:"2026-09",refreshHours:24},window.APP_CONFIG||{});
+const CFG=Object.assign({clientId:"",loginHint:"",domainHint:"",tenant:"common",currentFile:"",historyFile:"",cutover:"2026-09",refreshHours:24},window.APP_CONFIG||{});
 const CUT=CFG.cutover, CUTY=+CUT.slice(0,4);
 
 /* =================== Streaming XLSX reader (no libraries) =================== */
@@ -452,6 +452,7 @@ const OD=(()=>{
     const p=new URLSearchParams({client_id:CFG.clientId,response_type:"code",redirect_uri:redirect,scope:SCOPE,code_challenge:ch,code_challenge_method:"S256",state,response_mode:"query"});
     if(silent)p.set("prompt","none");else p.set("prompt","select_account");
     if(CFG.loginHint)p.set("login_hint",CFG.loginHint);
+    if(CFG.domainHint)p.set("domain_hint",CFG.domainHint);
     location.assign(`${AUTH}/authorize?${p}`);
   }
   async function token(body){
@@ -547,25 +548,129 @@ const q=$("q");
 function search(v){if(!CUR&&!HIST){home();return;}const r=lookup(v);if(r.cur||r.hist)render(r);else renderList(r.list,v);}
 $("form").addEventListener("submit",e=>{e.preventDefault();search(q.value);q.select();});
 
+/* =================== Eigen EAN-13/EAN-8/UPC-lezer (zonder bibliotheek) =================== */
+const EAN=(()=>{
+  const P=["3211","2221","2122","1411","1132","1231","1114","1312","1213","3112"].map(s=>[...s].map(Number));
+  const PAR=["LLLLLL","LLGLGG","LLGGLG","LLGGGL","LGLLGG","LGGLLG","LGGGLL","LGLGLG","LGLGGL","LGGLGL"];
+  // best digit for 4 runs; rev=true → G-code (reversed widths)
+  function digit(r,rev){
+    const s=r[0]+r[1]+r[2]+r[3],w=r.map(x=>x*7/s);let best=-1,bd=9,second=9;
+    for(let d=0;d<10;d++){const p=rev?[P[d][3],P[d][2],P[d][1],P[d][0]]:P[d];let e=0;for(let k=0;k<4;k++)e+=Math.abs(w[k]-p[k]);
+      if(e<bd){second=bd;bd=e;best=d;}else if(e<second)second=e;}
+    return bd<1.6&&second-bd>0.25?[best,bd]:null;
+  }
+  const guardOk=(runs,i,n,m)=>{for(let k=0;k<n;k++){const v=runs[i+k]/m;if(v<0.45||v>1.9)return false;}return true;};
+  function ean13(runs,i){ // runs[i] = first bar of start guard; needs 59 runs
+    let W=0;for(let k=0;k<59;k++)W+=runs[i+k];const m=W/95;
+    if(!guardOk(runs,i,3,m)||!guardOk(runs,i+27,5,m)||!guardOk(runs,i+56,3,m))return null;
+    let par="",ds=[];
+    for(let d=0;d<6;d++){const r=runs.slice(i+3+d*4,i+7+d*4);const a=digit(r,false),b=digit(r,true);
+      if(a&&(!b||a[1]<=b[1])){ds.push(a[0]);par+="L";}else if(b){ds.push(b[0]);par+="G";}else return null;}
+    for(let d=0;d<6;d++){const a=digit(runs.slice(i+32+d*4,i+36+d*4),false);if(!a)return null;ds.push(a[0]);}
+    const f=PAR.indexOf(par);if(f<0)return null;const all=[f,...ds];
+    let s=0;for(let k=0;k<12;k++)s+=all[k]*(k%2?3:1);if((10-s%10)%10!==all[12])return null;return all.join("");
+  }
+  function ean8(runs,i){ // 43 runs
+    let W=0;for(let k=0;k<43;k++)W+=runs[i+k];const m=W/67;
+    if(!guardOk(runs,i,3,m)||!guardOk(runs,i+19,5,m)||!guardOk(runs,i+40,3,m))return null;const ds=[];
+    for(let d=0;d<4;d++){const a=digit(runs.slice(i+3+d*4,i+7+d*4),false);if(!a)return null;ds.push(a[0]);}
+    for(let d=0;d<4;d++){const a=digit(runs.slice(i+24+d*4,i+28+d*4),false);if(!a)return null;ds.push(a[0]);}
+    let s=0;for(let k=0;k<7;k++)s+=ds[k]*(k%2?1:3);if((10-s%10)%10!==ds[7])return null;return ds.join("");
+  }
+  // Edge-based run extraction (robust for blurry/low-contrast camera images):
+  // find alternating local minima (bars) and maxima (spaces); an edge lies where the signal
+  // crosses halfway between two neighbouring extrema.
+  function runsOf(lum){
+    const n=lum.length,s=new Float32Array(n);
+    for(let k=0;k<n;k++)s[k]=(lum[Math.max(0,k-1)]+2*lum[k]+lum[Math.min(n-1,k+1)])/4;
+    let mn=255,mx=0;for(let k=0;k<n;k++){if(s[k]<mn)mn=s[k];if(s[k]>mx)mx=s[k];}
+    const prom=Math.max(5,(mx-mn)*0.07);if(mx-mn<25)return null;
+    const ex=[];let st=0,cmax=0,cmin=0;   // ex: [index, value, isMin]; st: 0 unknown, 1 seeking max, -1 seeking min
+    for(let k=1;k<n;k++){
+      if(st>=0){if(s[k]>s[cmax])cmax=k;if(s[cmax]-s[k]>prom){ex.push([cmax,s[cmax],false]);st=-1;cmin=k;continue;}}
+      if(st<=0){if(s[k]<s[cmin])cmin=k;if(s[k]-s[cmin]>prom){ex.push([cmin,s[cmin],true]);st=1;cmax=k;continue;}}
+    }
+    if(ex.length){const last=ex[ex.length-1][1];   // close the final extremum (e.g. the quiet zone after the last bar)
+      if(st===1&&s[cmax]-last>prom)ex.push([cmax,s[cmax],false]);else if(st===-1&&last-s[cmin]>prom)ex.push([cmin,s[cmin],true]);}
+    if(ex.length<10)return null;
+    const edges=[];
+    for(let e=0;e<ex.length-1;e++){const [i0,v0]=ex[e],[i1,v1]=ex[e+1],mid=(v0+v1)/2;let x=i0;
+      for(let k=i0;k<i1;k++){if((s[k]-mid)*(s[k+1]-mid)<=0){const d=s[k+1]-s[k];x=k+(d?(mid-s[k])/d:0.5);break;}}
+      edges.push(x);}
+    const runs=[edges[0]],col=[ex[0][2]?1:0];   // leading segment (e.g. quiet zone)
+    for(let e=0;e<edges.length-1;e++){runs.push(edges[e+1]-edges[e]);col.push(ex[e+1][2]?1:0);}
+    runs.push(n-edges[edges.length-1]);col.push(ex[ex.length-1][2]?1:0);
+    return {runs,col};
+  }
+  function decodeLine(lum){
+    if(lum.length<60)return null;
+    const R=runsOf(lum);if(!R)return null;
+    for(const dir of [1,-1]){
+      const runs=dir>0?R.runs:[...R.runs].reverse(),col=dir>0?R.col:[...R.col].reverse();
+      for(let i=1;i<runs.length-42;i++){if(!col[i])continue;
+        const mod=(runs[i]+runs[i+1]+runs[i+2])/3;if(runs[i-1]<mod*2.5)continue;   // quiet zone
+        if(i+59<=runs.length){const r=ean13(runs,i);if(r)return r;}
+        const r8=ean8(runs,i);if(r8)return r8;}
+    }
+    return null;
+  }
+  // scan a canvas: several horizontal-ish lines at a few angles, through the middle area
+  function scanCanvas(ctx,w,h){
+    const img=ctx.getImageData(0,0,w,h).data,g=new Uint8Array(w*h);
+    for(let p=0,q=0;q<g.length;p+=4,q++)g[q]=(img[p]*77+img[p+1]*150+img[p+2]*29)>>8;
+    const hits={};const L=Math.hypot(w,h);
+    for(const vertical of [false,true]){
+      for(const ang of [0,-6,6,-12,12,-18,18]){
+        const a=(ang+(vertical?90:0))*Math.PI/180,dx=Math.cos(a),dy=Math.sin(a),nx=-dy,ny=dx;
+        for(let o=-0.32;o<=0.321;o+=0.04){
+          const cx=w/2+nx*o*(vertical?w:h),cy=h/2+ny*o*(vertical?w:h);const lum=[];
+          for(let t=-L/2;t<L/2;t++){const x=Math.round(cx+dx*t),y=Math.round(cy+dy*t);if(x<1||y<1||x>=w-1||y>=h-1)continue;
+            const k=y*w+x;lum.push((g[k]+g[k-w]+g[k+w])/3);}
+          const r=decodeLine(lum);if(r){hits[r]=(hits[r]||0)+1;if(hits[r]>=2)return r;}
+        }
+      }
+    }
+    return null;
+  }
+  return {scanCanvas};
+})();
+
 /* =================== Camera =================== */
-const cam=$("cam"),video=$("video");let stream=null,stopScan=null;
+const cam=$("cam"),video=$("video");let stream=null,scanning=false;
 const ZX="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js";
-function closeCam(){cam.style.display="none";if(stopScan)stopScan();stopScan=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;}
+const loadScript=src=>new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+function closeCam(){cam.style.display="none";scanning=false;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;}
 $("camClose").onclick=closeCam;
 function found(code){closeCam();q.value=code;search(code);if(navigator.vibrate)navigator.vibrate(60);}
-const loadScript=src=>new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});
 $("camBtn").onclick=async()=>{
-  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280}},audio:false});}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});}
   catch(e){out.insertAdjacentHTML("afterbegin",`<div class="msg">De camera is hier niet beschikbaar. Gebruik de handscanner of typ de code.${OD.inFrame?" In de versie op je eigen webadres werkt de camera wel.":" Geef de app toegang tot de camera in je instellingen."}</div>`);return;}
-  cam.style.display="flex";video.srcObject=stream;await video.play().catch(()=>{});let alive=true;stopScan=()=>{alive=false;};
-  if("BarcodeDetector" in window){const det=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf"]});
-    const tick=async()=>{if(!alive)return;try{const r=await det.detect(video);if(r.length)return found(r[0].rawValue);}catch(e){}setTimeout(tick,150);};tick();}
-  else{try{if(!window.ZXing)await loadScript(ZX);
-      const hints=new Map();hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.ITF]);hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
-      const reader=new ZXing.BrowserMultiFormatReader(hints);stopScan=()=>{alive=false;try{reader.reset();}catch(e){}};
-      if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;
-      reader.decodeFromConstraints({video:{facingMode:{ideal:"environment"}}},video,res=>{if(res&&alive)found(res.getText());});}
-    catch(e){closeCam();out.insertAdjacentHTML("afterbegin",`<div class="msg">Barcodelezer kon niet laden (eerste keer is internet nodig). Gebruik de handscanner of typ de code.</div>`);}}
+  cam.style.display="flex";video.srcObject=stream;await video.play().catch(()=>{});scanning=true;
+  // continuous focus and a little zoom: lets you hold the phone further away (iPhones focus badly up close)
+  try{const tr=stream.getVideoTracks()[0],cap=tr.getCapabilities?tr.getCapabilities():{},adv={};
+    if(cap.focusMode&&cap.focusMode.includes("continuous"))adv.focusMode="continuous";
+    if(cap.zoom)adv.zoom=Math.min(cap.zoom.max,Math.max(cap.zoom.min,2));
+    if(Object.keys(adv).length)await tr.applyConstraints({advanced:[adv]});}catch(e){}
+  let det=null;try{if("BarcodeDetector" in window){const f=await BarcodeDetector.getSupportedFormats();if(f.includes("ean_13"))det=new BarcodeDetector({formats:f.filter(x=>["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf"].includes(x))});}}catch(e){}
+  if(!window.ZXing)loadScript(ZX).catch(()=>{});   // only for other barcode types (Code 128 …), not needed for EAN
+  const cv=document.createElement("canvas"),ctx=cv.getContext("2d",{willReadFrequently:true});let n=0;
+  const tick=async()=>{
+    if(!scanning)return;
+    const vw=video.videoWidth,vh=video.videoHeight;
+    if(vw&&vh){
+      const sc=Math.min(1,1280/Math.max(vw,vh));cv.width=Math.round(vw*sc);cv.height=Math.round(vh*sc);ctx.drawImage(video,0,0,cv.width,cv.height);
+      let code=null;
+      try{code=EAN.scanCanvas(ctx,cv.width,cv.height);}catch(e){}
+      if(!code&&det){try{const r=await det.detect(cv);if(r.length)code=r[0].rawValue;}catch(e){}}
+      if(!code&&window.ZXing&&++n%4===0){try{
+        const hints=new Map();hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
+        const r=new ZXing.MultiFormatReader();r.setHints(hints);
+        code=r.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(cv)))).getText();}catch(e){}}
+      if(code&&scanning)return found(code);
+    }
+    setTimeout(tick,80);
+  };
+  tick();
 };
 
 /* =================== Start =================== */
