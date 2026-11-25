@@ -174,7 +174,7 @@ const norm=s=>String(s??"").trim();
 const key=s=>{s=norm(s);if(/^\d+(\.0+)?$/.test(s))s=s.replace(/\.0+$/,"").replace(/^0+/,"");return s.toLowerCase();};
 const kx=s=>norm(s).toLowerCase();   // exacte code (nullen vooraan tellen mee)
 const num=s=>{s=norm(s).replace(",",".");if(s==="")return null;const n=Number(s);return isFinite(n)?n:null;};
-const bc=s=>{s=norm(s);if(/e\+?\d+$/i.test(s)&&isFinite(+s))s=Number(s).toFixed(0);s=s.replace(/\.0+$/,"");return /^0*$/.test(s)?"":s;};   // "0" = geen barcode
+const bc=s=>{s=norm(s);if(/e\+?\d+$/i.test(s)&&isFinite(+s))s=Number(s).toFixed(0);s=s.replace(/\.0+$/,"");if(/^\d{11,12}$/.test(s))s=s.padStart(13,"0");return /^0*$/.test(s)?"":s;};   // "0" = geen barcode; 11/12 cijfers → aangevuld tot 13
 const pad=n=>String(n).padStart(2,"0");
 // Header → "jjjj-mm" (accepts "2026-01", "2026-01-01", "01/2026", Excel date numbers)
 function ym(h){h=norm(h);let m;
@@ -265,15 +265,15 @@ async function get(k){try{const db=await idb();return await new Promise((res,rej
 function addX(m,l,k,v){const e=kx(k),o=key(k);if(!e)return;if(!m.has(e))m.set(e,v);if(l.has(o)){if(l.get(o)!==v)l.set(o,null);}else l.set(o,v);}
 function buildIndex(){
   for(const n of ["bar","code","codeL","ref","refL","hbar","hcode","hcodeL"])IX[n]=new Map();
-  if(CUR)for(const it of CUR.items){if(it.bar&&!IX.bar.has(it.bar))IX.bar.set(it.bar,it);addX(IX.code,IX.codeL,it.code,it);addX(IX.ref,IX.refL,it.ref,it);}
-  if(HIST)for(const r of HIST.recs){if(r.bar&&!IX.hbar.has(r.bar))IX.hbar.set(r.bar,r);addX(IX.hcode,IX.hcodeL,r.oc,r);}
+  if(CUR)for(const it of CUR.items){const b=bc(it.bar);if(b&&!IX.bar.has(b))IX.bar.set(b,it);addX(IX.code,IX.codeL,it.code,it);addX(IX.ref,IX.refL,it.ref,it);}
+  if(HIST)for(const r of HIST.recs){const b=bc(r.bar);if(b&&!IX.hbar.has(b))IX.hbar.set(b,r);addX(IX.hcode,IX.hcodeL,r.oc,r);}
   // extra barcodes of the new software also find the article
   if(CUR)for(const it of CUR.items)if(it.alt)for(const a of it.alt){const b=bc(a);if(b&&!IX.bar.has(b))IX.bar.set(b,it);}
   // link: new article ← history records via barcode, extra barcodes or old codes
   IX.link=new Map();IX.linked=new Set();
   if(CUR&&HIST)for(const it of CUR.items){
     const hs=[];const add=r=>{if(r&&!hs.includes(r))hs.push(r);};
-    if(it.bar)add(IX.hbar.get(it.bar));
+    if(it.bar)add(IX.hbar.get(bc(it.bar)));
     if(it.alt)for(const a of it.alt){const b=bc(a);add((b&&IX.hbar.get(b))||IX.hcode.get(kx(a)));}   // exact: 00000641 ≠ 000000641
     const keep=cleanLinks(it,hs);
     if(keep.length){keep.forEach(r=>IX.linked.add(r));IX.link.set(it,keep.length===1?keep[0]:mergeHist(keep));}
@@ -372,7 +372,7 @@ function render({cur,hist}){
       ${cur&&hist&&hist.oc&&key(hist.oc)!==key(cur.code)?`<div class="chip"><span>Oude code${hist.parts?"s":""}</span>${esc(hist.oc)}</div>`:""}
       ${cur&&cur.alt?`<div class="chip"><span>Extra</span>${esc(cur.alt.join(", "))}</div>`:""}
       <div class="chip"><span>RefArt</span>${esc(base.ref)||"–"}</div>
-      <div class="chip"><span>Barcode</span>${esc(base.bar)||"–"}</div>
+      <div class="chip"><span>Barcode</span>${esc(bc(base.bar))||"–"}</div>
       ${cur&&cur.lev?`<div class="chip"><span>Leverancier</span>${esc(cur.lev)}</div>`:""}
     </div>
   </div>
